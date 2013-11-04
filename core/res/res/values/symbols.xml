@@ -2583,6 +2583,8 @@
   <java-symbol type="drawable" name="ic_input_extract_action_done" />
   <java-symbol type="drawable" name="ic_input_extract_action_previous" />
   <java-symbol type="drawable" name="ic_input_extract_action_return" />
+  <!-- Config.xml entries -->
+  <java-symbol type="bool" name="config_samsung_stk" />
 
   <java-symbol type="fraction" name="input_extract_layout_height" />
   <java-symbol type="fraction" name="input_extract_layout_padding_left" />
