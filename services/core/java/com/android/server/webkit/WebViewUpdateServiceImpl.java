@@ -404,7 +404,7 @@ public class WebViewUpdateServiceImpl {
         }
 
 
-        private static class ProviderAndPackageInfo {
+        private class ProviderAndPackageInfo {
             public final WebViewProviderInfo provider;
             public final PackageInfo packageInfo;
 
