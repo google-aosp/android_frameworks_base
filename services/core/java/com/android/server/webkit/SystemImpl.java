@@ -33,6 +33,7 @@ import android.provider.Settings.Global;
 import android.provider.Settings;
 import android.util.AndroidRuntimeException;
 import android.util.Log;
+import android.webkit.WebViewFactory.MissingWebViewPackageException;
 import android.webkit.WebViewFactory;
 import android.webkit.WebViewProviderInfo;
 
@@ -66,7 +67,6 @@ public class SystemImpl implements SystemInterface {
     @Override
     public WebViewProviderInfo[] getWebViewPackages() {
         int numFallbackPackages = 0;
-        int numAvailableByDefaultPackages = 0;
         XmlResourceParser parser = null;
         List<WebViewProviderInfo> webViewProviders = new ArrayList<WebViewProviderInfo>();
         try {
@@ -82,12 +82,12 @@ public class SystemImpl implements SystemInterface {
                 if (element.equals(TAG_WEBVIEW_PROVIDER)) {
                     String packageName = parser.getAttributeValue(null, TAG_PACKAGE_NAME);
                     if (packageName == null) {
-                        throw new AndroidRuntimeException(
+                        throw new MissingWebViewPackageException(
                                 "WebView provider in framework resources missing package name");
                     }
                     String description = parser.getAttributeValue(null, TAG_DESCRIPTION);
                     if (description == null) {
-                        throw new AndroidRuntimeException(
+                        throw new MissingWebViewPackageException(
                                 "WebView provider in framework resources missing description");
                     }
                     boolean availableByDefault = "true".equals(
@@ -99,32 +99,21 @@ public class SystemImpl implements SystemInterface {
                             readSignatures(parser));
                     if (currentProvider.isFallback) {
                         numFallbackPackages++;
-                        if (!currentProvider.availableByDefault) {
-                            throw new AndroidRuntimeException(
-                                    "Each WebView fallback package must be available by default.");
-                        }
                         if (numFallbackPackages > 1) {
                             throw new AndroidRuntimeException(
-                                    "There can be at most one WebView fallback package.");
+                                    "There can be at most one webview fallback package.");
                         }
-                    }
-                    if (currentProvider.availableByDefault) {
-                        numAvailableByDefaultPackages++;
                     }
                     webViewProviders.add(currentProvider);
                 }
                 else {
-                    Log.e(TAG, "Found an element that is not a WebView provider");
+                    Log.e(TAG, "Found an element that is not a webview provider");
                 }
             }
         } catch (XmlPullParserException | IOException e) {
-            throw new AndroidRuntimeException("Error when parsing WebView config " + e);
+            throw new MissingWebViewPackageException("Error when parsing WebView meta data " + e);
         } finally {
             if (parser != null) parser.close();
-        }
-        if (numAvailableByDefaultPackages == 0) {
-            throw new AndroidRuntimeException("There must be at least one WebView package "
-                    + "that is available by default");
         }
         return webViewProviders.toArray(new WebViewProviderInfo[webViewProviders.size()]);
     }
