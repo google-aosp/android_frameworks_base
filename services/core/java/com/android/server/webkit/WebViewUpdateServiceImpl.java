@@ -160,8 +160,6 @@ public class WebViewUpdateServiceImpl {
             isFallbackEnabled = isEnabledPackage(
                     mSystemInterface.getPackageInfoForProvider(fallbackProvider));
         } catch (NameNotFoundException e) {
-            // No fallback package installed -> early out.
-            return;
         }
 
         if (existsValidNonFallbackProvider
