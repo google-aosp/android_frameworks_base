@@ -141,38 +141,17 @@ public final class WebViewFactory {
      */
     public static int loadWebViewNativeLibraryFromPackage(String packageName,
                                                           ClassLoader clazzLoader) {
-        WebViewProviderResponse response = null;
-        try {
-            response = getUpdateService().waitForAndGetProvider();
-        } catch (RemoteException e) {
-            Log.e(LOGTAG, "error waiting for relro creation", e);
-            return LIBLOAD_FAILED_WAITING_FOR_WEBVIEW_REASON_UNKNOWN;
+        int ret = waitForProviderAndSetPackageInfo();
+        if (ret != LIBLOAD_SUCCESS && ret != LIBLOAD_FAILED_WAITING_FOR_RELRO) {
+            return ret;
         }
-
-
-        if (response.status != LIBLOAD_SUCCESS
-                && response.status != LIBLOAD_FAILED_WAITING_FOR_RELRO) {
-            return response.status;
-        }
-        if (!response.packageInfo.packageName.equals(packageName)) {
+        if (!sPackageInfo.packageName.equals(packageName))
             return LIBLOAD_WRONG_PACKAGE_NAME;
-        }
-
-        PackageManager packageManager = AppGlobals.getInitialApplication().getPackageManager();
-        PackageInfo packageInfo;
-        try {
-            packageInfo = packageManager.getPackageInfo(packageName,
-                    PackageManager.GET_META_DATA | PackageManager.MATCH_DEBUG_TRIAGED_MISSING);
-        } catch (PackageManager.NameNotFoundException e) {
-            Log.e(LOGTAG, "Couldn't find package " + packageName);
-            return LIBLOAD_WRONG_PACKAGE_NAME;
-        }
-        sPackageInfo = packageInfo;
 
         int loadNativeRet = loadNativeLibrary(clazzLoader);
         // If we failed waiting for relro we want to return that fact even if we successfully load
         // the relro file.
-        if (loadNativeRet == LIBLOAD_SUCCESS) return response.status;
+        if (loadNativeRet == LIBLOAD_SUCCESS) return ret;
         return loadNativeRet;
     }
 
@@ -309,7 +288,7 @@ public final class WebViewFactory {
                 Context webViewContext = initialApplication.createApplicationContext(
                         newPackageInfo.applicationInfo,
                         Context.CONTEXT_INCLUDE_CODE | Context.CONTEXT_IGNORE_SECURITY);
-                sPackageInfo = newPackageInfo;
+                sPackageInfo = response.packageInfo;
                 return webViewContext;
             } finally {
                 Trace.traceEnd(Trace.TRACE_TAG_WEBVIEW);
@@ -618,6 +597,22 @@ public final class WebViewFactory {
                 System.exit(0);
             }
         }
+    }
+
+    private static int waitForProviderAndSetPackageInfo() {
+        WebViewProviderResponse response = null;
+        try {
+            response =
+                getUpdateService().waitForAndGetProvider();
+            if (response.status == LIBLOAD_SUCCESS
+                    || response.status == LIBLOAD_FAILED_WAITING_FOR_RELRO) {
+                sPackageInfo = response.packageInfo;
+            }
+        } catch (RemoteException e) {
+            Log.e(LOGTAG, "error waiting for relro creation", e);
+            return LIBLOAD_FAILED_WAITING_FOR_WEBVIEW_REASON_UNKNOWN;
+        }
+        return response.status;
     }
 
     // Assumes that we have waited for relro creation and set sPackageInfo
