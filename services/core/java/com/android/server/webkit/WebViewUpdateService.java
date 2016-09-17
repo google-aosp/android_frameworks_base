@@ -26,11 +26,9 @@ import android.content.pm.ApplicationInfo;
 import android.content.pm.IPackageDeleteObserver;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
-import android.content.pm.PackageManager.NameNotFoundException;
 import android.content.pm.Signature;
 import android.content.pm.UserInfo;
 import android.os.Binder;
-import android.os.Build;
 import android.os.PatternMatcher;
 import android.os.Process;
 import android.os.RemoteException;
@@ -40,7 +38,6 @@ import android.os.UserManager;
 import android.provider.Settings.Global;
 import android.provider.Settings;
 import android.util.AndroidRuntimeException;
-import android.util.Base64;
 import android.util.Slog;
 import android.webkit.IWebViewUpdateService;
 import android.webkit.WebViewFactory;
@@ -75,6 +72,8 @@ public class WebViewUpdateService extends SystemService {
 
     // The WebView package currently in use (or the one we are preparing).
     private PackageInfo mCurrentWebViewPackage = null;
+    // The WebView providers that are currently available.
+    private WebViewProviderInfo[] mCurrentValidWebViewPackages = null;
 
     private BroadcastReceiver mWebViewUpdatedReceiver;
     private WebViewUtilityInterface mWebViewUtility;
@@ -127,6 +126,7 @@ public class WebViewUpdateService extends SystemService {
                             PackageInfo newPackage = null;
                             synchronized(WebViewUpdateService.this) {
                                 try {
+                                    updateValidWebViewPackages();
                                     newPackage = findPreferredWebViewPackage();
                                     if (mCurrentWebViewPackage != null)
                                         oldProviderName = mCurrentWebViewPackage.packageName;
@@ -180,17 +180,11 @@ public class WebViewUpdateService extends SystemService {
         publishBinderService("webviewupdate", new BinderService(), true /*allowIsolated*/);
     }
 
-    private boolean existsValidNonFallbackProvider(WebViewProviderInfo[] providers) {
+    private static boolean existsValidNonFallbackProvider(WebViewProviderInfo[] providers) {
         for (WebViewProviderInfo provider : providers) {
-            if (provider.availableByDefault && !provider.isFallback) {
-                try {
-                    PackageInfo packageInfo = getPackageInfoForProvider(provider);
-                    if (isEnabledPackage(packageInfo) && isValidProvider(provider, packageInfo)) {
-                        return true;
-                    }
-                } catch (NameNotFoundException e) {
-                    // A non-existent provider is neither valid nor enabled
-                }
+            if (provider.isAvailableByDefault() && provider.isEnabled()
+                    && provider.isValidProvider() && !provider.isFallbackPackage()) {
+                return true;
             }
         }
         return false;
@@ -217,9 +211,11 @@ public class WebViewUpdateService extends SystemService {
         WebViewProviderInfo[] webviewProviders = mWebViewUtility.getWebViewPackages();
         WebViewProviderInfo fallbackProvider = getFallbackProvider(webviewProviders);
         if (fallbackProvider == null) return;
+        boolean existsValidNonFallbackProvider =
+            existsValidNonFallbackProvider(webviewProviders);
 
-        enablePackageForUser(fallbackProvider.packageName,
-                !existsValidNonFallbackProvider(webviewProviders), userId);
+        enablePackageForUser(fallbackProvider.packageName, !existsValidNonFallbackProvider,
+                userId);
     }
 
     /**
@@ -240,7 +236,7 @@ public class WebViewUpdateService extends SystemService {
             for (WebViewProviderInfo provider : webviewProviders) {
                 String webviewPackage = "package:" + provider.packageName;
                 if (webviewPackage.equals(intent.getDataString())) {
-                    if (provider.availableByDefault) {
+                    if (provider.isAvailableByDefault()) {
                         changedPackage = provider.packageName;
                     }
                     break;
@@ -255,16 +251,10 @@ public class WebViewUpdateService extends SystemService {
         if (fallbackProvider == null) return;
         boolean existsValidNonFallbackProvider = existsValidNonFallbackProvider(webviewProviders);
 
-        boolean isFallbackEnabled = false;
-        try {
-            isFallbackEnabled = isEnabledPackage(getPackageInfoForProvider(fallbackProvider));
-        } catch (NameNotFoundException e) {
-        }
-
         if (existsValidNonFallbackProvider
                 // During an OTA the primary user's WebView state might differ from other users', so
                 // ignore the state of that user during boot.
-                && (isFallbackEnabled || intent == null)) {
+                && (fallbackProvider.isEnabled() || intent == null)) {
             // Uninstall and disable fallback package for all users.
             context.getPackageManager().deletePackage(fallbackProvider.packageName,
                     new IPackageDeleteObserver.Stub() {
@@ -283,7 +273,7 @@ public class WebViewUpdateService extends SystemService {
         } else if (!existsValidNonFallbackProvider
                 // During an OTA the primary user's WebView state might differ from other users', so
                 // ignore the state of that user during boot.
-                && (!isFallbackEnabled || intent==null)) {
+                && (!fallbackProvider.isEnabled() || intent==null)) {
             // Enable the fallback package for all users.
             UserManager userManager =
                 (UserManager)context.getSystemService(Context.USER_SERVICE);
@@ -309,11 +299,22 @@ public class WebViewUpdateService extends SystemService {
      */
     private static WebViewProviderInfo getFallbackProvider(WebViewProviderInfo[] webviewPackages) {
         for (WebViewProviderInfo provider : webviewPackages) {
-            if (provider.isFallback) {
+            if (provider.isFallbackPackage()) {
                 return provider;
             }
         }
         return null;
+    }
+
+    private static boolean containsAvailableNonFallbackProvider(
+            WebViewProviderInfo[] webviewPackages) {
+        for (WebViewProviderInfo provider : webviewPackages) {
+            if (provider.isAvailableByDefault() && provider.isEnabled()
+                    && provider.isValidProvider() && !provider.isFallbackPackage()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private boolean isFallbackPackage(String packageName) {
@@ -335,6 +336,7 @@ public class WebViewUpdateService extends SystemService {
         updateFallbackState(getContext(), null);
         try {
             synchronized(this) {
+                updateValidWebViewPackages();
                 mCurrentWebViewPackage = findPreferredWebViewPackage();
                 onWebViewProviderChanged(mCurrentWebViewPackage);
             }
@@ -406,41 +408,24 @@ public class WebViewUpdateService extends SystemService {
         }
     }
 
-    private ProviderAndPackageInfo[] getValidWebViewPackagesAndInfos() {
-        WebViewProviderInfo[] allProviders = mWebViewUtility.getWebViewPackages();
-        List<ProviderAndPackageInfo> providers = new ArrayList<>();
-        for(int n = 0; n < allProviders.length; n++) {
-            try {
-                PackageInfo packageInfo = getPackageInfoForProvider(allProviders[n]);
-                if (isValidProvider(allProviders[n], packageInfo)) {
-                    providers.add(new ProviderAndPackageInfo(allProviders[n], packageInfo));
-                }
-            } catch (NameNotFoundException e) {
-                // Don't add non-existent packages
-            }
-        }
-        return providers.toArray(new ProviderAndPackageInfo[providers.size()]);
-    }
-
     /**
-     * Fetch only the currently valid WebView packages.
-     **/
-    private WebViewProviderInfo[] getValidWebViewPackages() {
-        ProviderAndPackageInfo[] providersAndPackageInfos = getValidWebViewPackagesAndInfos();
-        WebViewProviderInfo[] providers = new WebViewProviderInfo[providersAndPackageInfos.length];
-        for(int n = 0; n < providersAndPackageInfos.length; n++) {
-            providers[n] = providersAndPackageInfos[n].provider;
+     * Updates the currently valid WebView provider packages.
+     * Should be used when a provider has been installed or removed.
+     * @hide
+     * */
+    private void updateValidWebViewPackages() {
+        List<WebViewProviderInfo> webViewProviders  =
+            new ArrayList<WebViewProviderInfo>(Arrays.asList(mWebViewUtility.getWebViewPackages()));
+        Iterator<WebViewProviderInfo> it = webViewProviders.iterator();
+        // remove non-valid packages
+        while(it.hasNext()) {
+            WebViewProviderInfo current = it.next();
+            if (!current.isValidProvider())
+                it.remove();
         }
-        return providers;
-    }
-
-    private class ProviderAndPackageInfo {
-        public final WebViewProviderInfo provider;
-        public final PackageInfo packageInfo;
-
-        public ProviderAndPackageInfo(WebViewProviderInfo provider, PackageInfo packageInfo) {
-            this.provider = provider;
-            this.packageInfo = packageInfo;
+        synchronized(this) {
+            mCurrentValidWebViewPackages =
+                webViewProviders.toArray(new WebViewProviderInfo[webViewProviders.size()]);
         }
     }
 
@@ -452,90 +437,34 @@ public class WebViewUpdateService extends SystemService {
      * @hide
      */
     private PackageInfo findPreferredWebViewPackage() {
-        ProviderAndPackageInfo[] providers = getValidWebViewPackagesAndInfos();
+        WebViewProviderInfo[] providers = mCurrentValidWebViewPackages;
 
         String userChosenProvider = mWebViewUtility.getUserChosenWebViewProvider(getContext());
 
         // If the user has chosen provider, use that
-        for (ProviderAndPackageInfo providerAndPackage : providers) {
-            if (providerAndPackage.provider.packageName.equals(userChosenProvider)
-                    && isEnabledPackage(providerAndPackage.packageInfo)) {
-                return providerAndPackage.packageInfo;
+        for (WebViewProviderInfo provider : providers) {
+            if (provider.packageName.equals(userChosenProvider) && provider.isEnabled()) {
+                return provider.getPackageInfo();
             }
         }
 
         // User did not choose, or the choice failed; use the most stable provider that is
         // enabled and available by default (not through user choice).
-        for (ProviderAndPackageInfo providerAndPackage : providers) {
-            if (providerAndPackage.provider.availableByDefault
-                    && isEnabledPackage(providerAndPackage.packageInfo)) {
-                return providerAndPackage.packageInfo;
+        for (WebViewProviderInfo provider : providers) {
+            if (provider.isAvailableByDefault() && provider.isEnabled()) {
+                return provider.getPackageInfo();
             }
         }
 
         // Could not find any enabled package either, use the most stable provider.
-        for (ProviderAndPackageInfo providerAndPackage : providers) {
-            return providerAndPackage.packageInfo;
+        for (WebViewProviderInfo provider : providers) {
+            return provider.getPackageInfo();
         }
 
         mAnyWebViewInstalled = false;
         throw new WebViewFactory.MissingWebViewPackageException(
                 "Could not find a loadable WebView package");
     }
-
-    /**
-     * Returns whether this provider is valid for use as a WebView provider.
-     */
-    private static boolean isValidProvider(WebViewProviderInfo configInfo,
-            PackageInfo packageInfo) {
-        if (providerHasValidSignature(configInfo, packageInfo) &&
-                WebViewFactory.getWebViewLibrary(packageInfo.applicationInfo) != null) {
-            return true;
-        }
-        return false;
-    }
-
-    private static boolean providerHasValidSignature(WebViewProviderInfo provider,
-            PackageInfo packageInfo) {
-        if (Build.IS_DEBUGGABLE)
-            return true;
-        Signature[] packageSignatures;
-        // If no signature is declared, instead check whether the package is included in the
-        // system.
-        if (provider.signatures == null || provider.signatures.length == 0) {
-            return packageInfo.applicationInfo.isSystemApp();
-        }
-        packageSignatures = packageInfo.signatures;
-        if (packageSignatures.length != 1)
-            return false;
-
-        final byte[] packageSignature = packageSignatures[0].toByteArray();
-        // Return whether the package signature matches any of the valid signatures
-        for (String signature : provider.signatures) {
-            final byte[] validSignature = Base64.decode(signature, Base64.DEFAULT);
-            if (Arrays.equals(packageSignature, validSignature))
-                return true;
-        }
-        return false;
-    }
-
-    /**
-     * Returns whether the given package is enabled.
-     * This state can be changed by the user from Settings->Apps
-     */
-    private static boolean isEnabledPackage(PackageInfo packageInfo) {
-        return packageInfo.applicationInfo.enabled;
-    }
-
-    private static PackageInfo getPackageInfoForProvider(WebViewProviderInfo configInfo)
-            throws NameNotFoundException {
-        PackageManager pm = AppGlobals.getInitialApplication().getPackageManager();
-        return pm.getPackageInfo(configInfo.packageName, PACKAGE_FLAGS);
-    }
-
-    // flags declaring we want extra info from the package manager for webview providers
-    private final static int PACKAGE_FLAGS = PackageManager.GET_META_DATA
-            | PackageManager.GET_SIGNATURES | PackageManager.MATCH_DEBUG_TRIAGED_MISSING;
 
     /**
      * Returns whether WebView is ready and is not going to go through its preparation phase again
@@ -669,7 +598,9 @@ public class WebViewUpdateService extends SystemService {
 
         @Override // Binder call
         public WebViewProviderInfo[] getValidWebViewPackages() {
-            return WebViewUpdateService.this.getValidWebViewPackages();
+            synchronized(WebViewUpdateService.this) {
+                return mCurrentValidWebViewPackages;
+            }
         }
 
         @Override // Binder call
