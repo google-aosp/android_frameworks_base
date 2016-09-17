@@ -110,17 +110,14 @@ public class SystemImpl implements SystemInterface {
                     Log.e(TAG, "Found an element that is not a webview provider");
                 }
             }
-        } catch (XmlPullParserException | IOException e) {
+        } catch(XmlPullParserException e) {
+            throw new MissingWebViewPackageException("Error when parsing WebView meta data " + e);
+        } catch(IOException e) {
             throw new MissingWebViewPackageException("Error when parsing WebView meta data " + e);
         } finally {
             if (parser != null) parser.close();
         }
         return webViewProviders.toArray(new WebViewProviderInfo[webViewProviders.size()]);
-    }
-
-    public int getFactoryPackageVersion(String packageName) throws NameNotFoundException {
-        PackageManager pm = AppGlobals.getInitialApplication().getPackageManager();
-        return pm.getPackageInfo(packageName, PackageManager.MATCH_FACTORY_ONLY).versionCode;
     }
 
     /**
