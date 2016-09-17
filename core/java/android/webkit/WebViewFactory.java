@@ -106,9 +106,6 @@ public final class WebViewFactory {
     public static final int LIBLOAD_WEBVIEW_BEING_REPLACED = 8;
     public static final int LIBLOAD_FAILED_WAITING_FOR_WEBVIEW_REASON_UNKNOWN = 9;
 
-    // error for namespace lookup
-    public static final int LIBLOAD_FAILED_TO_FIND_NAMESPACE = 10;
-
     private static String getWebViewPreparationErrorReason(int error) {
         switch (error) {
             case LIBLOAD_FAILED_WAITING_FOR_RELRO:
@@ -242,8 +239,7 @@ public final class WebViewFactory {
      * Load the native library for the given package name iff that package
      * name is the same as the one providing the webview.
      */
-    public static int loadWebViewNativeLibraryFromPackage(String packageName,
-                                                          ClassLoader clazzLoader) {
+    public static int loadWebViewNativeLibraryFromPackage(String packageName) {
         int ret = waitForProviderAndSetPackageInfo();
         if (ret != LIBLOAD_SUCCESS) {
             return ret;
@@ -251,7 +247,7 @@ public final class WebViewFactory {
         if (!sPackageInfo.packageName.equals(packageName))
             return LIBLOAD_WRONG_PACKAGE_NAME;
 
-        return loadNativeLibrary(clazzLoader);
+        return loadNativeLibrary();
     }
 
     static WebViewFactoryProvider getProvider() {
@@ -337,16 +333,15 @@ public final class WebViewFactory {
                 Trace.traceEnd(Trace.TRACE_TAG_WEBVIEW);
             }
 
+            Trace.traceBegin(Trace.TRACE_TAG_WEBVIEW, "WebViewFactory.loadNativeLibrary()");
+            loadNativeLibrary();
+            Trace.traceEnd(Trace.TRACE_TAG_WEBVIEW);
+
             Trace.traceBegin(Trace.TRACE_TAG_WEBVIEW, "WebViewFactory.getChromiumProviderClass()");
             try {
                 initialApplication.getAssets().addAssetPathAsSharedLibrary(
                         webViewContext.getApplicationInfo().sourceDir);
                 ClassLoader clazzLoader = webViewContext.getClassLoader();
-
-                Trace.traceBegin(Trace.TRACE_TAG_WEBVIEW, "WebViewFactory.loadNativeLibrary()");
-                loadNativeLibrary(clazzLoader);
-                Trace.traceEnd(Trace.TRACE_TAG_WEBVIEW);
-
                 Trace.traceBegin(Trace.TRACE_TAG_WEBVIEW, "Class.forName()");
                 try {
                     return (Class<WebViewFactoryProvider>) Class.forName(CHROMIUM_WEBVIEW_FACTORY,
@@ -638,7 +633,7 @@ public final class WebViewFactory {
     }
 
     // Assumes that we have waited for relro creation and set sPackageInfo
-    private static int loadNativeLibrary(ClassLoader clazzLoader) {
+    private static int loadNativeLibrary() {
         if (!sAddressSpaceReserved) {
             Log.e(LOGTAG, "can't load with relro file; address space not reserved");
             return LIBLOAD_ADDRESS_SPACE_NOT_RESERVED;
@@ -646,10 +641,9 @@ public final class WebViewFactory {
 
         String[] args = getWebViewNativeLibraryPaths(sPackageInfo);
         int result = nativeLoadWithRelroFile(args[0] /* path32 */,
-                                             args[1] /* path64 */,
-                                             CHROMIUM_WEBVIEW_NATIVE_RELRO_32,
-                                             CHROMIUM_WEBVIEW_NATIVE_RELRO_64,
-                                             clazzLoader);
+                                                 args[1] /* path64 */,
+                                                 CHROMIUM_WEBVIEW_NATIVE_RELRO_32,
+                                                 CHROMIUM_WEBVIEW_NATIVE_RELRO_64);
         if (result != LIBLOAD_SUCCESS) {
             Log.w(LOGTAG, "failed to load with relro file, proceeding without");
         } else if (DEBUG) {
@@ -678,6 +672,5 @@ public final class WebViewFactory {
     private static native boolean nativeCreateRelroFile(String lib32, String lib64,
                                                         String relro32, String relro64);
     private static native int nativeLoadWithRelroFile(String lib32, String lib64,
-                                                      String relro32, String relro64,
-                                                      ClassLoader clazzLoader);
+                                                          String relro32, String relro64);
 }
