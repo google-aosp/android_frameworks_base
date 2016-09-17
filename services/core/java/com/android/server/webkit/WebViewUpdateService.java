@@ -66,6 +66,8 @@ public class WebViewUpdateService extends SystemService {
     private int mNumRelroCreationsFinished = 0;
     // Implies that we need to rerun relro creation because we are using an out-of-date package
     private boolean mWebViewPackageDirty = false;
+    // Set to true when the current provider is being replaced
+    private boolean mCurrentProviderBeingReplaced = false;
     private boolean mAnyWebViewInstalled = false;
 
     private int NUMBER_OF_RELROS_UNKNOWN = Integer.MAX_VALUE;
@@ -90,10 +92,19 @@ public class WebViewUpdateService extends SystemService {
                     // the removal of the old package and one representing the addition of the
                     // new package.
                     // In the case where we receive an intent to remove the old version of the
-                    // package that is being replaced we early-out here so that we don't run the
-                    // update-logic twice.
+                    // package that is being replaced we set a flag here and early-out so that we
+                    // don't change provider while replacing the current package (we will instead
+                    // change provider when the new version of the package is being installed).
                     if (intent.getAction().equals(Intent.ACTION_PACKAGE_REMOVED)
                         && intent.getExtras().getBoolean(Intent.EXTRA_REPLACING)) {
+                        synchronized(WebViewUpdateService.this) {
+                            if (mCurrentWebViewPackage == null) return;
+
+                            String webViewPackage = "package:" + mCurrentWebViewPackage.packageName;
+                            if (webViewPackage.equals(intent.getDataString()))
+                                mCurrentProviderBeingReplaced = true;
+                        }
+
                         return;
                     }
 
@@ -395,6 +406,9 @@ public class WebViewUpdateService extends SystemService {
     private void onWebViewProviderChanged(PackageInfo newPackage) {
         synchronized(this) {
             mAnyWebViewInstalled = true;
+            // If we have changed provider then the replacement of the old provider is
+            // irrelevant - we can only have chosen a new provider if its package is available.
+            mCurrentProviderBeingReplaced = false;
             if (mNumRelroCreationsStarted == mNumRelroCreationsFinished) {
                 mCurrentWebViewPackage = newPackage;
                 updateUserSetting(newPackage.packageName);
@@ -490,6 +504,7 @@ public class WebViewUpdateService extends SystemService {
     private boolean webViewIsReadyLocked() {
         return !mWebViewPackageDirty
             && (mNumRelroCreationsStarted == mNumRelroCreationsFinished)
+            && !mCurrentProviderBeingReplaced
             // The current package might be replaced though we haven't received an intent declaring
             // this yet, the following flag makes anyone loading WebView to wait in this case.
             && mAnyWebViewInstalled;
@@ -501,8 +516,13 @@ public class WebViewUpdateService extends SystemService {
                 mWebViewPackageDirty = false;
                 // If we have changed provider since we started the relro creation we need to
                 // redo the whole process using the new package instead.
-                PackageInfo newPackage = findPreferredWebViewPackage();
-                onWebViewProviderChanged(newPackage);
+                // Though, if the current provider package is being replaced we don't want to change
+                // provider here since we will perform the change either when the package is added
+                // again or when we switch to another provider (whichever comes first).
+                if (!mCurrentProviderBeingReplaced) {
+                    PackageInfo newPackage = findPreferredWebViewPackage();
+                    onWebViewProviderChanged(newPackage);
+                }
             } else {
                 this.notifyAll();
             }
@@ -577,6 +597,11 @@ public class WebViewUpdateService extends SystemService {
                 // Make sure we return the provider that was used to create the relro file
                 webViewPackage = WebViewUpdateService.this.mCurrentWebViewPackage;
                 if (webViewReady) {
+                } else if (mCurrentProviderBeingReplaced) {
+                    // It is important that we check this flag before the one representing WebView
+                    // being installed, otherwise we might think there is no WebView though the
+                    // current one is just being replaced.
+                    webViewStatus = WebViewFactory.LIBLOAD_WEBVIEW_BEING_REPLACED;
                 } else if (!mAnyWebViewInstalled) {
                     webViewStatus = WebViewFactory.LIBLOAD_FAILED_LISTING_WEBVIEW_PACKAGES;
                 } else {
