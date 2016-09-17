@@ -67,7 +67,6 @@ public class SystemImpl implements SystemInterface {
     public WebViewProviderInfo[] getWebViewPackages() {
         int numFallbackPackages = 0;
         int numAvailableByDefaultPackages = 0;
-        int numAvByDefaultAndNotFallback = 0;
         XmlResourceParser parser = null;
         List<WebViewProviderInfo> webViewProviders = new ArrayList<WebViewProviderInfo>();
         try {
@@ -111,9 +110,6 @@ public class SystemImpl implements SystemInterface {
                     }
                     if (currentProvider.availableByDefault) {
                         numAvailableByDefaultPackages++;
-                        if (!currentProvider.isFallback) {
-                            numAvByDefaultAndNotFallback++;
-                        }
                     }
                     webViewProviders.add(currentProvider);
                 }
@@ -129,10 +125,6 @@ public class SystemImpl implements SystemInterface {
         if (numAvailableByDefaultPackages == 0) {
             throw new AndroidRuntimeException("There must be at least one WebView package "
                     + "that is available by default");
-        }
-        if (numAvByDefaultAndNotFallback == 0) {
-            throw new AndroidRuntimeException("There must be at least one WebView package "
-                    + "that is available by default and not a fallback");
         }
         return webViewProviders.toArray(new WebViewProviderInfo[webViewProviders.size()]);
     }
