@@ -288,11 +288,11 @@ import java.util.Map;
  * helps Google improve WebView. Data is collected on a per-app basis for each app which has
  * instantiated a WebView. An individual app can opt out of this feature by putting the following
  * tag in its manifest:
- * <pre>
- * &lt;meta-data android:name="android.webkit.WebView.MetricsOptOut"
- *            android:value="true" /&gt;
- * </pre>
  * </p>
+ * <pre>
+ * <meta-data android:name="android.webkit.WebView.MetricsOptOut"
+ *            android:value="true" />
+ * </pre>
  * <p>
  * Data will only be uploaded for a given app if the user has consented AND the app has not opted
  * out.
