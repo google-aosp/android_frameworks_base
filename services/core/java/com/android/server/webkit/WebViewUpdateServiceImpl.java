@@ -291,13 +291,6 @@ public class WebViewUpdateServiceImpl {
             try {
                 synchronized(mLock) {
                     mCurrentWebViewPackage = findPreferredWebViewPackage();
-                    // Don't persist the user-chosen setting across boots if the package being
-                    // chosen is not used (could be disabled or uninstalled) so that the user won't
-                    // be surprised by the device switching to using a certain webview package,
-                    // that was uninstalled/disabled a long time ago, if it is installed/enabled
-                    // again.
-                    mSystemInterface.updateUserSetting(mContext,
-                            mCurrentWebViewPackage.packageName);
                     onWebViewProviderChanged(mCurrentWebViewPackage);
                 }
             } catch (Throwable t) {
@@ -352,6 +345,7 @@ public class WebViewUpdateServiceImpl {
                 mAnyWebViewInstalled = true;
                 if (mNumRelroCreationsStarted == mNumRelroCreationsFinished) {
                     mCurrentWebViewPackage = newPackage;
+                    mSystemInterface.updateUserSetting(mContext, newPackage.packageName);
 
                     // The relro creations might 'finish' (not start at all) before
                     // WebViewFactory.onWebViewProviderChanged which means we might not know the
@@ -438,12 +432,9 @@ public class WebViewUpdateServiceImpl {
                 }
             }
 
-            // Could not find any enabled package either, use the most stable and default-available
-            // provider.
+            // Could not find any enabled package either, use the most stable provider.
             for (ProviderAndPackageInfo providerAndPackage : providers) {
-                if (providerAndPackage.provider.availableByDefault) {
-                    return providerAndPackage.packageInfo;
-                }
+                return providerAndPackage.packageInfo;
             }
 
             mAnyWebViewInstalled = false;
