@@ -74,7 +74,9 @@ public final class WebViewDelegate {
      * and false otherwise.
      */
     public boolean canInvokeDrawGlFunctor(View containerView) {
-        return true;
+        ViewRootImpl viewRootImpl = containerView.getViewRootImpl();
+         // viewRootImpl can be null during teardown when window is leaked.
+        return viewRootImpl != null;
     }
 
     /**
