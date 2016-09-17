@@ -16,10 +16,7 @@
 
 package android.webkit;
 
-/**
- * Base class for clients to capture Service Worker related callbacks,
- * see {@link ServiceWorkerController} for usage example.
- */
+
 public class ServiceWorkerClient {
 
     /**
@@ -35,7 +32,7 @@ public class ServiceWorkerClient {
      * @return A {@link android.webkit.WebResourceResponse} containing the
      *         response information or null if the WebView should load the
      *         resource itself.
-     * @see WebViewClient#shouldInterceptRequest(WebView, WebResourceRequest)
+     * @see {@link WebViewClient#shouldInterceptRequest()}
      */
     public WebResourceResponse shouldInterceptRequest(WebResourceRequest request) {
         return null;

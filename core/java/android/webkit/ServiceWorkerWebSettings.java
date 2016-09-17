@@ -30,12 +30,9 @@ public abstract class ServiceWorkerWebSettings {
     /**
      * Overrides the way the cache is used, see {@link WebSettings#setCacheMode}.
      *
-     * @param mode the mode to use. One of {@link WebSettings#LOAD_DEFAULT},
-     *     {@link WebSettings#LOAD_CACHE_ELSE_NETWORK}, {@link WebSettings#LOAD_NO_CACHE}
-     *     or {@link WebSettings#LOAD_CACHE_ONLY}. The default value is
-     *     {@link WebSettings#LOAD_DEFAULT}.
+     * @param mode the mode to use
      */
-    public abstract void setCacheMode(@WebSettings.CacheMode int mode);
+    public abstract void setCacheMode(int mode);
 
     /**
      * Gets the current setting for overriding the cache mode.
@@ -43,7 +40,6 @@ public abstract class ServiceWorkerWebSettings {
      * @return the current setting for overriding the cache mode
      * @see #setCacheMode
      */
-    @WebSettings.CacheMode
     public abstract int getCacheMode();
 
     /**
@@ -73,10 +69,11 @@ public abstract class ServiceWorkerWebSettings {
     public abstract boolean getAllowFileAccess();
 
     /**
-     * Sets whether Service Workers should not load resources from the network,
+     * Sets whether the Service Workers should not load resources from the network,
      * see {@link WebSettings#setBlockNetworkLoads}.
      *
-     * @param flag true means block network loads by the Service Workers
+     * @param flag whether the Service Workers should not load any resources from the
+     *             network
      */
     public abstract void setBlockNetworkLoads(boolean flag);
 

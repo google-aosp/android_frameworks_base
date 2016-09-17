@@ -119,11 +119,6 @@ public abstract class WebSettings {
         int value;
     }
 
-    /** @hide */
-    @IntDef({LOAD_DEFAULT, LOAD_NORMAL, LOAD_CACHE_ELSE_NETWORK, LOAD_NO_CACHE, LOAD_CACHE_ONLY})
-    @Retention(RetentionPolicy.SOURCE)
-    public @interface CacheMode {}
-
     /**
      * Default cache usage mode. If the navigation type doesn't impose any
      * specific behavior, use cached resources when they are available
@@ -881,7 +876,8 @@ public abstract class WebSettings {
      * {@link android.Manifest.permission#INTERNET} permission, otherwise it is
      * true.
      *
-     * @param flag true means block network loads by the WebView
+     * @param flag whether the WebView should not load any resources from the
+     *             network
      * @see android.webkit.WebView#reload
      */
     public abstract void setBlockNetworkLoads(boolean flag);
@@ -1279,7 +1275,7 @@ public abstract class WebSettings {
      *
      * @param mode the mode to use
      */
-    public abstract void setCacheMode(@CacheMode int mode);
+    public abstract void setCacheMode(int mode);
 
     /**
      * Gets the current setting for overriding the cache mode.
@@ -1287,7 +1283,6 @@ public abstract class WebSettings {
      * @return the current setting for overriding the cache mode
      * @see #setCacheMode
      */
-    @CacheMode
     public abstract int getCacheMode();
 
     /**
