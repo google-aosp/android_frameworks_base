@@ -19,7 +19,6 @@ package com.android.server.webkit;
 import android.app.ActivityManagerNative;
 import android.app.AppGlobals;
 import android.content.Context;
-import android.content.pm.ApplicationInfo;
 import android.content.pm.IPackageDeleteObserver;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
@@ -207,8 +206,7 @@ public class SystemImpl implements SystemInterface {
         enablePackageForAllUsers(context, packageName, false);
         try {
             PackageManager pm = AppGlobals.getInitialApplication().getPackageManager();
-            ApplicationInfo applicationInfo = pm.getApplicationInfo(packageName, 0);
-            if (applicationInfo != null && applicationInfo.isUpdatedSystemApp()) {
+            if (pm.getApplicationInfo(packageName, 0).isUpdatedSystemApp()) {
                 pm.deletePackage(packageName, new IPackageDeleteObserver.Stub() {
                         public void packageDeleted(String packageName, int returnCode) {
                             enablePackageForAllUsers(context, packageName, false);
@@ -235,9 +233,8 @@ public class SystemImpl implements SystemInterface {
                     enable ? PackageManager.COMPONENT_ENABLED_STATE_DEFAULT :
                     PackageManager.COMPONENT_ENABLED_STATE_DISABLED_USER, 0,
                     userId, null);
-        } catch (RemoteException | IllegalArgumentException e) {
-            Log.w(TAG, "Tried to " + (enable ? "enable " : "disable ") + packageName
-                    + " for user " + userId + ": " + e);
+        } catch (RemoteException e) {
+            Log.w(TAG, "Tried to disable " + packageName + " for user " + userId + ": " + e);
         }
     }
 
