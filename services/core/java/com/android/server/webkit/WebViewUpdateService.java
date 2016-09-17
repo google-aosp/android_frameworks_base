@@ -63,7 +63,6 @@ public class WebViewUpdateService extends SystemService {
         mWebViewUpdatedReceiver = new BroadcastReceiver() {
                 @Override
                 public void onReceive(Context context, Intent intent) {
-                    int userId = intent.getIntExtra(Intent.EXTRA_USER_HANDLE, UserHandle.USER_NULL);
                     switch (intent.getAction()) {
                         case Intent.ACTION_PACKAGE_REMOVED:
                             // When a package is replaced we will receive two intents, one
@@ -74,22 +73,24 @@ public class WebViewUpdateService extends SystemService {
                             // run the update-logic twice.
                             if (intent.getExtras().getBoolean(Intent.EXTRA_REPLACING)) return;
                             mImpl.packageStateChanged(packageNameFromIntent(intent),
-                                    PACKAGE_REMOVED, userId);
+                                    PACKAGE_REMOVED);
                             break;
                         case Intent.ACTION_PACKAGE_CHANGED:
                             // Ensure that we only heed PACKAGE_CHANGED intents if they change an
                             // entire package, not just a component
                             if (entirePackageChanged(intent)) {
                                 mImpl.packageStateChanged(packageNameFromIntent(intent),
-                                        PACKAGE_CHANGED, userId);
+                                        PACKAGE_CHANGED);
                             }
                             break;
                         case Intent.ACTION_PACKAGE_ADDED:
                             mImpl.packageStateChanged(packageNameFromIntent(intent),
                                     (intent.getExtras().getBoolean(Intent.EXTRA_REPLACING)
-                                     ? PACKAGE_ADDED_REPLACED : PACKAGE_ADDED), userId);
+                                     ? PACKAGE_ADDED_REPLACED : PACKAGE_ADDED));
                             break;
                         case Intent.ACTION_USER_ADDED:
+                            int userId =
+                                intent.getIntExtra(Intent.EXTRA_USER_HANDLE, UserHandle.USER_NULL);
                             mImpl.handleNewUser(userId);
                             break;
                     }
@@ -104,14 +105,11 @@ public class WebViewUpdateService extends SystemService {
         for (WebViewProviderInfo provider : mImpl.getWebViewPackages()) {
             filter.addDataSchemeSpecificPart(provider.packageName, PatternMatcher.PATTERN_LITERAL);
         }
-
-        getContext().registerReceiverAsUser(mWebViewUpdatedReceiver, UserHandle.ALL, filter,
-                null /* broadcast permission */, null /* handler */);
+        getContext().registerReceiver(mWebViewUpdatedReceiver, filter);
 
         IntentFilter userAddedFilter = new IntentFilter();
         userAddedFilter.addAction(Intent.ACTION_USER_ADDED);
-        getContext().registerReceiverAsUser(mWebViewUpdatedReceiver, UserHandle.ALL,
-                userAddedFilter, null /* broadcast permission */, null /* handler */);
+        getContext().registerReceiver(mWebViewUpdatedReceiver, userAddedFilter);
 
         publishBinderService("webviewupdate", new BinderService(), true /*allowIsolated*/);
     }
