@@ -128,6 +128,11 @@ public final class WebViewFactory {
         public MissingWebViewPackageException(Exception e) { super(e); }
     }
 
+    // TODO (gsennton) remove when committing webview xts test change
+    public static String getWebViewPackageName() {
+        return null;
+    }
+
     /**
      * @hide
      */
