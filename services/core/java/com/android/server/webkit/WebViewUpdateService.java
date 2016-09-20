@@ -630,12 +630,7 @@ public class WebViewUpdateService extends SystemService {
                 throw new SecurityException(msg);
             }
 
-            long callingId = Binder.clearCallingIdentity();
-            try {
-                return WebViewUpdateService.this.changeProviderAndSetting(newProvider);
-            } finally {
-                Binder.restoreCallingIdentity(callingId);
-            }
+            return WebViewUpdateService.this.changeProviderAndSetting(newProvider);
         }
 
         @Override // Binder call
