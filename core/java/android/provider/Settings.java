@@ -7367,7 +7367,6 @@ public final class Settings {
          * Developer setting to enable WebView multiprocess rendering.
          * @hide
          */
-        @SystemApi
         public static final String WEBVIEW_MULTIPROCESS = "webview_multiprocess";
 
        /**
