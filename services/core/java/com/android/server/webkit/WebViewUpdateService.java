@@ -557,14 +557,9 @@ public class WebViewUpdateService extends SystemService {
                 return;
             }
 
-            long callingId = Binder.clearCallingIdentity();
-            try {
-                synchronized (WebViewUpdateService.this) {
-                    mNumRelroCreationsFinished++;
-                    checkIfRelrosDoneLocked();
-                }
-            } finally {
-                Binder.restoreCallingIdentity(callingId);
+            synchronized (WebViewUpdateService.this) {
+                mNumRelroCreationsFinished++;
+                checkIfRelrosDoneLocked();
             }
         }
 
