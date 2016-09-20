@@ -16,10 +16,6 @@
 
 package android.webkit;
 
-import android.content.pm.PackageInfo;
-import android.webkit.WebViewProviderInfo;
-import android.webkit.WebViewProviderResponse;
-
 /**
  * Private service to wait for the updatable WebView to be ready for use.
  * @hide
@@ -29,28 +25,12 @@ interface IWebViewUpdateService {
     /**
      * Used by the relro file creator to notify the service that it's done.
      */
-    void notifyRelroCreationCompleted();
+    void notifyRelroCreationCompleted(boolean is64Bit, boolean success);
 
     /**
      * Used by WebViewFactory to block loading of WebView code until
-     * preparations are complete. Returns the package used as WebView provider.
+     * preparations are complete.
      */
-    WebViewProviderResponse waitForAndGetProvider();
+    void waitForRelroCreationCompleted(boolean is64Bit);
 
-    /**
-     * DevelopmentSettings uses this to notify WebViewUpdateService that a
-     * new provider has been selected by the user.
-     */
-    void changeProviderAndSetting(String newProvider);
-
-    /**
-     * DevelopmentSettings uses this to get the current available WebView
-     * providers (to display as choices to the user).
-     */
-    WebViewProviderInfo[] getValidWebViewPackages();
-
-    /**
-     * Used by DevelopmentSetting to get the name of the WebView provider currently in use.
-     */
-    String getCurrentWebViewPackageName();
 }

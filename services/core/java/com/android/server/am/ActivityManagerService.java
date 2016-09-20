@@ -21792,37 +21792,4 @@ public final class ActivityManagerService extends ActivityManagerNative
             }
         }
     }
-
-    /**
-     * Kill processes for the user with id userId and that depend on the package named packageName
-     */
-    @Override
-    public void killPackageDependents(String packageName, int userId) {
-        enforceCallingPermission(android.Manifest.permission.KILL_UID, "killPackageDependents()");
-        if (packageName == null) {
-            throw new NullPointerException(
-                    "Cannot kill the dependents of a package without its name.");
-        }
-
-        long callingId = Binder.clearCallingIdentity();
-        IPackageManager pm = AppGlobals.getPackageManager();
-        int pkgUid = -1;
-        try {
-            pkgUid = pm.getPackageUid(packageName, MATCH_DEBUG_TRIAGED_MISSING, userId);
-        } catch (RemoteException e) {
-        }
-        if (pkgUid == -1) {
-            throw new IllegalArgumentException(
-                    "Cannot kill dependents of non-existing package " + packageName);
-        }
-        try {
-            synchronized(this) {
-                killPackageProcessesLocked(packageName, UserHandle.getAppId(pkgUid), userId,
-                        ProcessList.FOREGROUND_APP_ADJ, false, true, true, false,
-                        "dep: " + packageName);
-            }
-        } finally {
-            Binder.restoreCallingIdentity(callingId);
-        }
-    }
 }
