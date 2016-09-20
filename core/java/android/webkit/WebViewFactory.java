@@ -96,49 +96,27 @@ public final class WebViewFactory {
         public MissingWebViewPackageException(Exception e) { super(e); }
     }
 
-    /** @hide */
-    public static String[] getWebViewPackageNames() {
-        return AppGlobals.getInitialApplication().getResources().getStringArray(
-                com.android.internal.R.array.config_webViewPackageNames);
-    }
-
-    // TODO (gsennton) remove when committing webview xts test change
     public static String getWebViewPackageName() {
-        String[] webViewPackageNames = getWebViewPackageNames();
-        return webViewPackageNames[webViewPackageNames.length-1];
+        return AppGlobals.getInitialApplication().getString(
+                com.android.internal.R.string.config_webViewPackageName);
     }
 
-    /**
-     * Return the package info of the first package in the webview priority list that contains
-     * webview.
-     *
-     * @hide
-     */
-    public static PackageInfo findPreferredWebViewPackage() {
+    private static PackageInfo fetchPackageInfo() {
         PackageManager pm = AppGlobals.getInitialApplication().getPackageManager();
-
-        for (String packageName : getWebViewPackageNames()) {
-            try {
-                PackageInfo packageInfo = pm.getPackageInfo(packageName,
-                    PackageManager.GET_META_DATA);
-                ApplicationInfo applicationInfo = packageInfo.applicationInfo;
-
-                // If the correct flag is set the package contains webview.
-                if (getWebViewLibrary(applicationInfo) != null) {
-                    return packageInfo;
-                }
-            } catch (PackageManager.NameNotFoundException e) {
-            }
+        try {
+            return pm.getPackageInfo(getWebViewPackageName(), PackageManager.GET_META_DATA);
+        } catch (PackageManager.NameNotFoundException e) {
+            throw new MissingWebViewPackageException(e);
         }
-        throw new MissingWebViewPackageException("Could not find a loadable WebView package");
     }
 
     // throws MissingWebViewPackageException
     private static ApplicationInfo getWebViewApplicationInfo() {
-        if (sPackageInfo == null)
-            return findPreferredWebViewPackage().applicationInfo;
-        else
+        if (sPackageInfo == null) {
+            return fetchPackageInfo().applicationInfo;
+        } else {
             return sPackageInfo.applicationInfo;
+        }
     }
 
     private static String getWebViewLibrary(ApplicationInfo ai) {
@@ -156,12 +134,7 @@ public final class WebViewFactory {
      * name is the same as the one providing the webview.
      */
     public static int loadWebViewNativeLibraryFromPackage(String packageName) {
-        try {
-            sPackageInfo = findPreferredWebViewPackage();
-        } catch (MissingWebViewPackageException e) {
-            return LIBLOAD_FAILED_LISTING_WEBVIEW_PACKAGES;
-        }
-
+        sPackageInfo = fetchPackageInfo();
         if (packageName != null && packageName.equals(sPackageInfo.packageName)) {
             return loadNativeLibrary();
         }
@@ -207,7 +180,7 @@ public final class WebViewFactory {
     private static Class<WebViewFactoryProvider> getProviderClass() {
         try {
             // First fetch the package info so we can log the webview package version.
-            sPackageInfo = findPreferredWebViewPackage();
+            sPackageInfo = fetchPackageInfo();
             Log.i(LOGTAG, "Loading " + sPackageInfo.packageName + " version " +
                 sPackageInfo.versionName + " (code " + sPackageInfo.versionCode + ")");
 
