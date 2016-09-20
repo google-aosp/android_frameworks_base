@@ -38,21 +38,6 @@ public abstract class TokenBindingService {
     public static final String KEY_ALGORITHM_ECDSAP256 = "ECDSAP256";
 
     /**
-     * Provides the KeyPair information.
-     */
-    public static abstract class TokenBindingKey {
-        /**
-         * The public, private key pair.
-         */
-        public abstract KeyPair getKeyPair();
-
-        /**
-         * The algorithm that is used to generate the key pair.
-         */
-        public abstract String getAlgorithm();
-    }
-
-    /**
      * Returns the default TokenBinding service instance. At present there is
      * only one token binding service instance for all WebView instances,
      * however this restriction may be relaxed in the future.
@@ -74,25 +59,16 @@ public abstract class TokenBindingService {
     /**
      * Retrieves the key pair for a given origin from the internal
      * TokenBinding key store asynchronously.
-     *
-     * The user can provide a list of acceptable algorithms for the retrieved
-     * key pair. If a key pair exists and it is in the list of algorithms, then
-     * the key is returned. If it is not in the list, no key is returned.
-     *
-     * If no key pair exists, WebView chooses an algorithm from the list, in
-     * the order given, to generate a key.
-     *
-     * The user can pass a null if any algorithm is acceptable.
+     * Will create a key pair if one does not exist.
      *
      * @param origin The origin for the server.
-     * @param algorithm The list of algorithms. Can be null. An
-     *        IllegalArgumentException is thrown if array is empty.
+     * @param algorithm The algorithm for generating the token binding key.
      * @param callback The callback that will be called when key is available.
      *        Cannot be null.
      */
     public abstract void getKey(Uri origin,
-                                String[] algorithm,
-                                ValueCallback<TokenBindingKey> callback);
+                                String algorithm,
+                                ValueCallback<KeyPair> callback);
     /**
      * Deletes specified key (for use when associated cookie is cleared).
      *
