@@ -292,24 +292,15 @@ public class WebViewUpdateService extends SystemService {
 
         // If the user has chosen provider, use that
         for (WebViewProviderInfo provider : providers) {
-            if (provider.packageName.equals(userChosenProvider) && provider.isEnabled()) {
+            if (provider.packageName.equals(userChosenProvider)) {
                 return provider.getPackageInfo();
             }
         }
 
-        // User did not choose, or the choice failed; use the most stable provider that is
-        // enabled and available by default (not through user choice).
-        for (WebViewProviderInfo provider : providers) {
-            if (provider.isAvailableByDefault() && provider.isEnabled()) {
-                return provider.getPackageInfo();
-            }
-        }
-
-        // Could not find any enabled package either, use the most stable provider.
+        // User did not choose, or the choice failed, use the most stable provider available
         for (WebViewProviderInfo provider : providers) {
             return provider.getPackageInfo();
         }
-
         mAnyWebViewInstalled = false;
         throw new WebViewFactory.MissingWebViewPackageException(
                 "Could not find a loadable WebView package");
