@@ -97,11 +97,21 @@ public class WebViewProviderInfo implements Parcelable {
      */
     public boolean isEnabled() {
         try {
-            // Explicitly fetch up-to-date package info here since the enabled-state of the package
-            // might have changed since we last fetched its package info.
-            updatePackageInfo();
-            return getPackageInfo().applicationInfo.enabled;
+            PackageManager pm = AppGlobals.getInitialApplication().getPackageManager();
+            int enabled_state = pm.getApplicationEnabledSetting(packageName);
+            switch (enabled_state) {
+                case PackageManager.COMPONENT_ENABLED_STATE_ENABLED:
+                    return true;
+                case PackageManager.COMPONENT_ENABLED_STATE_DEFAULT:
+                    ApplicationInfo applicationInfo = getPackageInfo().applicationInfo;
+                    return applicationInfo.enabled;
+                default:
+                    return false;
+            }
         } catch (WebViewPackageNotFoundException e) {
+            return false;
+        } catch (IllegalArgumentException e) {
+            // Thrown by PackageManager.getApplicationEnabledSetting if the package does not exist
             return false;
         }
     }
@@ -114,18 +124,14 @@ public class WebViewProviderInfo implements Parcelable {
         return availableByDefault;
     }
 
-    private void updatePackageInfo() {
-        try {
-            PackageManager pm = AppGlobals.getInitialApplication().getPackageManager();
-            packageInfo = pm.getPackageInfo(packageName, PACKAGE_FLAGS);
-        } catch (PackageManager.NameNotFoundException e) {
-            throw new WebViewPackageNotFoundException(e);
-        }
-    }
-
     public PackageInfo getPackageInfo() {
         if (packageInfo == null) {
-            updatePackageInfo();
+            try {
+                PackageManager pm = AppGlobals.getInitialApplication().getPackageManager();
+                packageInfo = pm.getPackageInfo(packageName, PACKAGE_FLAGS);
+            } catch (PackageManager.NameNotFoundException e) {
+                throw new WebViewPackageNotFoundException(e);
+            }
         }
         return packageInfo;
     }
