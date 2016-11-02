@@ -54,10 +54,10 @@
     <color name="dim_foreground_light_inverse">#bebebe</color>
     <color name="dim_foreground_light_inverse_disabled">#80bebebe</color>
     <color name="hint_foreground_light">#808080</color>
-    <color name="highlighted_text_dark">#9983CC39</color>
-    <color name="highlighted_text_light">#9983CC39</color>
-    <color name="link_text_dark">#5c5cff</color>
-    <color name="link_text_light">#0000ee</color>
+    <color name="highlighted_text_dark">@color/material_pixel_blue_bright</color>
+    <color name="highlighted_text_light">@color/material_pixel_blue_bright</color>
+    <color name="link_text_dark">@color/material_pixel_blue_bright</color>
+    <color name="link_text_light">@color/material_pixel_blue_bright</color>
     <color name="suggestion_highlight_text">#177bbd</color>
 
     <drawable name="stat_notify_sync_noanim">@drawable/stat_notify_sync_anim0</drawable>
@@ -150,7 +150,7 @@
 
     <color name="accessibility_focus_highlight">#bf39b500</color>
 
-    <color name="system_notification_accent_color">#ff607D8B</color>
+    <color name="system_notification_accent_color">@color/material_pixel_blue_bright</color>
     <color name="battery_saver_mode_color">#fff4511e</color><!-- deep orange 600 -->
 
     <!-- Default user icon colors -->
