@@ -47,6 +47,7 @@ import android.os.Vibrator;
 import android.os.SystemVibrator;
 import android.os.storage.IMountService;
 import android.os.storage.IMountShutdownObserver;
+import android.provider.Settings;
 import android.system.ErrnoException;
 import android.system.Os;
 import android.widget.ListView;
@@ -140,8 +141,8 @@ public final class ShutdownThread extends Thread {
     }
 
     private static boolean isAdvancedRebootPossible(final Context context) {
-        boolean advancedRebootEnabled = context.getResources().getBoolean(
-            com.android.internal.R.bool.config_advanced_reboot);
+        boolean advancedRebootEnabled = Settings.Secure.getInt(context.getContentResolver(),
+            Settings.Secure.ADVANCED_REBOOT, 0) == 1;
         boolean isPrimaryUser = UserHandle.getCallingUserId() == UserHandle.USER_SYSTEM;
 
         return advancedRebootEnabled && !mRebootSafeMode && isPrimaryUser;

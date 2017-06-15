@@ -18,7 +18,6 @@
   <!-- Reboot - Advanced Reboot -->
   <java-symbol type="array" name="shutdown_reboot_options" />
   <java-symbol type="array" name="shutdown_reboot_actions" />
-  <java-symbol type="bool" name="config_advanced_reboot" />
   <java-symbol type="drawable" name="ic_restart" />
   <java-symbol type="string" name="reboot_confirm" />
   <java-symbol type="string" name="reboot_progress" />

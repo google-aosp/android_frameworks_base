@@ -6503,6 +6503,12 @@ public final class Settings {
         public static final String WEB_ACTION_ENABLED = "web_action_enabled";
 
         /**
+         * Whether to include options in power menu for rebooting into recovery or bootloader
+         * @hide
+         */
+        public static final String ADVANCED_REBOOT = "advanced_reboot";
+
+        /**
          * Has this pairable device been paired or upgraded from a previously paired system.
          * @hide
          */
@@ -6592,6 +6598,7 @@ public final class Settings {
             DOZE_ENABLED,
             DOZE_PULSE_ON_PICK_UP,
             DOZE_PULSE_ON_DOUBLE_TAP,
+            ADVANCED_REBOOT,
             NFC_PAYMENT_DEFAULT_COMPONENT
         };
 
